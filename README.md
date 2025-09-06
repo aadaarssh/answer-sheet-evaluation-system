@@ -358,10 +358,10 @@ pip install sentence-transformers
 
 ## 📊 Project Stats
 
-![GitHub stars](https://img.shields.io/github/stars/username/ai-answer-evaluation?style=social)
-![GitHub forks](https://img.shields.io/github/forks/username/ai-answer-evaluation?style=social)
-![GitHub issues](https://img.shields.io/github/issues/username/ai-answer-evaluation)
-![GitHub license](https://img.shields.io/github/license/username/ai-answer-evaluation)
+![GitHub stars](https://img.shields.io/github/stars/aadaarssh/answer-sheet-evaluation-system?style=social)
+![GitHub forks](https://img.shields.io/github/forks/aadaarssh/answer-sheet-evaluation-system?style=social)
+![GitHub issues](https://img.shields.io/github/issues/aadaarssh/answer-sheet-evaluation-system)
+![GitHub license](https://img.shields.io/github/license/aadaarssh/answer-sheet-evaluation-system)
 
 ---
 
