@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 
 from .config import settings
 from .database import connect_to_mongo, close_mongo_connection
-from .routers import auth, schemes, sessions, scripts, evaluations
+from .routers import auth, schemes, sessions, scripts, evaluations, websocket
 
 # Configure logging
 logging.basicConfig(
@@ -50,7 +50,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.allowed_origins_list,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
 )
 
@@ -75,6 +75,7 @@ app.include_router(schemes.router, prefix="/api")
 app.include_router(sessions.router, prefix="/api")
 app.include_router(scripts.router, prefix="/api")
 app.include_router(evaluations.router, prefix="/api")
+app.include_router(websocket.router, prefix="/api")
 
 # Health check endpoint
 @app.get("/health")

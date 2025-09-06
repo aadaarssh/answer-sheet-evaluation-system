@@ -1,0 +1,107 @@
+{
+  "test_run_info": {
+    "timestamp": "2025-09-05T08:03:10.402975",
+    "system": "AI Evaluation System",
+    "focus": "OCR confidence failure analysis"
+  },
+  "component_tests": {
+    "database_connection": {
+      "status": "PASS",
+      "details": {
+        "connection": "SUCCESS",
+        "collections_found": 6,
+        "missing_collections": "None",
+        "script_count": 12,
+        "session_count": 1,
+        "scheme_count": 1,
+        "sample_data": "Found",
+        "sample_script_id": "68b8831be0978d1b576afaa6",
+        "sample_file_path": "uploads\\68b88313e0978d1b576afaa5\\fea84b29-5ebd-4bf5-b06b-f41eadf4eec0.jpg",
+        "sample_status": "completed",
+        "image_file_exists": true
+      },
+      "timestamp": "2025-09-05T08:03:12.630452"
+    },
+    "config_and_api_keys": {
+      "status": "FAIL",
+      "details": {
+        "error": "'Settings' object has no attribute 'upload_directory'",
+        "type": "AttributeError"
+      },
+      "timestamp": "2025-09-05T08:03:12.633548"
+    },
+    "file_operations": {
+      "status": "FAIL",
+      "details": {
+        "error": "'Settings' object has no attribute 'upload_directory'",
+        "type": "AttributeError"
+      },
+      "timestamp": "2025-09-05T08:03:12.635089"
+    },
+    "ocr_service": {
+      "status": "FAIL",
+      "details": {
+        "error": "'Settings' object has no attribute 'upload_directory'",
+        "type": "AttributeError",
+        "test_phase": "Service setup"
+      },
+      "timestamp": "2025-09-05T08:03:12.636629"
+    },
+    "gemini_verification": {
+      "status": "FAIL",
+      "details": {
+        "error": "cannot import name 'QuestionResult' from 'app.models.evaluation' (D:\\answer sheet evaluation system\\ai-evaluation-backend\\app\\models\\evaluation.py)",
+        "type": "ImportError"
+      },
+      "timestamp": "2025-09-05T08:03:15.832754"
+    },
+    "celery_tasks": {
+      "status": "PASS",
+      "details": {
+        "celery_app_loaded": "SUCCESS",
+        "broker_url": "redis://localhost:6379",
+        "backend_url": "redis://localhost:6379",
+        "redis_connected": true,
+        "custom_tasks_count": 16,
+        "key_tasks_available": [
+          true,
+          true,
+          true
+        ],
+        "active_workers_count": 1,
+        "worker_names": [
+          "celery@DESKTOP-078G8CL"
+        ],
+        "test_task_execution": "SUCCESS",
+        "test_task_result": "Task completed successfully"
+      },
+      "timestamp": "2025-09-05T08:03:55.015061"
+    },
+    "end_to_end_pipeline": {
+      "status": "PASS",
+      "details": {
+        "pipeline_execution": "SUCCESS",
+        "test_script_id": "68b884b3cac386319a159dbe",
+        "script_found": true,
+        "student_name": "top",
+        "script_name": "top down.jpg",
+        "processing_time_seconds": 1.02,
+        "task_result_keys": [
+          "status",
+          "script_id",
+          "message",
+          "script_found",
+          "script_name",
+          "student_name"
+        ]
+      },
+      "timestamp": "2025-09-05T08:03:56.039072"
+    }
+  },
+  "performance_metrics": {
+    "end_to_end_pipeline": {
+      "processing_time": 1.0194323062896729
+    }
+  },
+  "summary": {}
+}

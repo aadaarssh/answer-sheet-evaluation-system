@@ -7,17 +7,17 @@ class Settings(BaseSettings):
     mongodb_url: str = "mongodb://localhost:27017"
     database_name: str = "ai_evaluation_system"
     
-    # JWT Authentication
+    # JWT Authentication  
     secret_key: str = "your-super-secret-key-change-in-production-123456789"
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
     
-    # AI APIs
+    # AI APIs - FIXED: These must match .env file exactly
     openai_api_key: str = ""
     gemini_api_key: str = ""
     
-    # File Storage
-    upload_dir: str = "./uploads"
+    # File Storage - FIXED: Match .env variable names
+    upload_directory: str = "./uploads"  # Changed from upload_dir to match usage
     max_file_size_mb: int = 10
     
     # Processing
@@ -39,9 +39,15 @@ class Settings(BaseSettings):
     
     class Config:
         env_file = ".env"
+        case_sensitive = False  # Allow case insensitive matching
+        
+    # Add property for backward compatibility
+    @property
+    def upload_dir(self) -> str:
+        return self.upload_directory
 
-# Create settings instance
+# Create settings instance  
 settings = Settings()
 
 # Ensure upload directory exists
-os.makedirs(settings.upload_dir, exist_ok=True)
+os.makedirs(settings.upload_directory, exist_ok=True)

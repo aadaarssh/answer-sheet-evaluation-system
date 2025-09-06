@@ -74,20 +74,20 @@ class EvaluationService:
                 question_scores, percentage, evaluation_scheme.passing_marks
             )
             
-            # Create evaluation result
-            result = EvaluationResult(
-                total_score=total_score,
-                max_possible_score=evaluation_scheme.total_marks,
-                percentage=percentage,
-                question_scores=question_scores,
-                requires_manual_review=requires_review,
-                review_reasons=review_reasons,
-                evaluated_at=datetime.utcnow()
-            )
+            # Create evaluation result (as dict, will be converted to EvaluationResult later)
+            result_data = {
+                "total_score": total_score,
+                "max_possible_score": evaluation_scheme.total_marks,
+                "percentage": percentage,
+                "question_scores": question_scores,
+                "requires_manual_review": requires_review,
+                "review_reasons": review_reasons,
+                "evaluated_at": datetime.utcnow()
+            }
             
             logger.info(f"Evaluation completed: {total_score}/{evaluation_scheme.total_marks} ({percentage:.1f}%)")
             
-            return result
+            return result_data
             
         except Exception as e:
             logger.error(f"Error evaluating answer script: {e}")

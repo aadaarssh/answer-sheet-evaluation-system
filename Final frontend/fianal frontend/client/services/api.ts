@@ -151,6 +151,33 @@ class TokenManager {
   }
 }
 
+// Utility function to transform backend ObjectIds to frontend ids
+const transformObjectIds = (obj: any): any => {
+  if (obj === null || typeof obj !== 'object') {
+    return obj;
+  }
+  
+  if (Array.isArray(obj)) {
+    return obj.map(transformObjectIds);
+  }
+  
+  const transformed = { ...obj };
+  
+  // Transform _id to id if _id exists and id doesn't
+  if (transformed._id && !transformed.id) {
+    transformed.id = transformed._id;
+  }
+  
+  // Transform nested objects
+  Object.keys(transformed).forEach(key => {
+    if (typeof transformed[key] === 'object' && transformed[key] !== null) {
+      transformed[key] = transformObjectIds(transformed[key]);
+    }
+  });
+  
+  return transformed;
+};
+
 // API Client class
 class ApiClient {
   private baseUrl: string;
@@ -195,7 +222,8 @@ class ApiClient {
       throw new Error(errorData.detail || errorData.message || 'API request failed');
     }
 
-    return response.json();
+    const data = await response.json();
+    return transformObjectIds(data);
   }
 
   async get<T>(endpoint: string): Promise<T> {
@@ -411,6 +439,17 @@ export const scriptsApi = {
 
   async getScriptDetails(scriptId: string): Promise<any> {
     return apiClient.get(`/scripts/${scriptId}/details`);
+  },
+
+  async getTaskStatus(taskId: string): Promise<{
+    task_id: string;
+    status: string;
+    ready: boolean;
+    info?: any;
+    result?: any;
+    error?: string;
+  }> {
+    return apiClient.get(`/scripts/task/${taskId}/status`);
   }
 };
 
@@ -498,6 +537,96 @@ export const healthApi = {
   }
 };
 
+// WebSocket connection manager
+export class WebSocketManager {
+  private ws: WebSocket | null = null;
+  private connectionId: string | null = null;
+  private reconnectAttempts = 0;
+  private maxReconnectAttempts = 5;
+  private reconnectDelay = 3000;
+
+  connect(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      try {
+        const token = TokenManager.getToken();
+        const wsUrl = `ws://localhost:8000/api/ws${token ? `?token=${encodeURIComponent(token)}` : ''}`;
+        
+        this.ws = new WebSocket(wsUrl);
+
+        this.ws.onopen = () => {
+          this.reconnectAttempts = 0;
+          console.log('WebSocket connected');
+          resolve();
+        };
+
+        this.ws.onerror = (error) => {
+          console.error('WebSocket error:', error);
+          reject(error);
+        };
+
+        this.ws.onclose = () => {
+          console.log('WebSocket disconnected');
+          this.scheduleReconnect();
+        };
+
+        this.ws.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            this.handleMessage(data);
+          } catch (error) {
+            console.error('Failed to parse WebSocket message:', error);
+          }
+        };
+
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+
+  private scheduleReconnect() {
+    if (this.reconnectAttempts < this.maxReconnectAttempts) {
+      this.reconnectAttempts++;
+      setTimeout(() => {
+        console.log(`Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+        this.connect().catch(console.error);
+      }, this.reconnectDelay);
+    }
+  }
+
+  private handleMessage(data: any) {
+    if (data.type === 'connection_established') {
+      this.connectionId = data.connection_id;
+    }
+    
+    // Emit custom event for components to listen
+    window.dispatchEvent(new CustomEvent('websocket-message', { detail: data }));
+  }
+
+  subscribe(type: 'script' | 'session', id: string) {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify({
+        type: `subscribe_${type}`,
+        [`${type}_id`]: id
+      }));
+    }
+  }
+
+  disconnect() {
+    if (this.ws) {
+      this.ws.close();
+      this.ws = null;
+    }
+  }
+
+  isConnected(): boolean {
+    return this.ws?.readyState === WebSocket.OPEN;
+  }
+}
+
+// Create global WebSocket manager instance
+export const websocketManager = new WebSocketManager();
+
 // Export everything
 export { TokenManager, ApiClient };
 export default {
@@ -506,5 +635,6 @@ export default {
   sessions: sessionsApi,
   scripts: scriptsApi,
   evaluations: evaluationsApi,
-  health: healthApi
+  health: healthApi,
+  websocket: websocketManager
 };

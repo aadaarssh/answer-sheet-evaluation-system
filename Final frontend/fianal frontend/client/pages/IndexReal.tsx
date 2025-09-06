@@ -10,8 +10,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "@/hooks/use-toast";
+import ProcessingDashboard from "@/components/ProcessingDashboard";
 import LoginReal from "./LoginReal";
+import api, { 
+  EvaluationScheme, 
+  ExamSession, 
+  AnswerScript, 
+  EvaluationResult 
+} from "@/services/api";
 import {
   Brain,
   Upload,
@@ -160,11 +168,25 @@ export default function IndexReal() {
   const loadInitialData = async () => {
     try {
       // Load schemes
+      console.log('Loading schemes...');
       const schemes = await schemesApi.list();
+      console.log('Loaded schemes:', schemes);
+      
+      // Debug: Check if schemes have proper id field
+      schemes.forEach((scheme, index) => {
+        console.log(`Scheme ${index}:`, {
+          id: scheme.id,
+          _id: (scheme as any)._id,
+          scheme_name: scheme.scheme_name
+        });
+      });
+      
       setAppState(prev => ({ ...prev, schemes }));
 
       // Load sessions
+      console.log('Loading sessions...');
       const sessions = await sessionsApi.list();
+      console.log('Loaded sessions:', sessions);
       setAppState(prev => ({ ...prev, sessions }));
 
       // Load review queue
@@ -238,10 +260,30 @@ export default function IndexReal() {
   };
 
   const createSession = async () => {
-    if (!newSessionName.trim() || !selectedScheme) {
+    if (!newSessionName.trim()) {
       toast({
         title: "Error",
-        description: "Please enter session name and select a scheme",
+        description: "Please enter a session name",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!selectedScheme || selectedScheme === 'undefined') {
+      toast({
+        title: "Error",
+        description: "Please select a valid evaluation scheme",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Verify the selected scheme exists in our schemes list
+    const schemeExists = appState.schemes.some(scheme => scheme.id === selectedScheme);
+    if (!schemeExists) {
+      toast({
+        title: "Error",
+        description: "Selected scheme is invalid. Please select a different scheme.",
         variant: "destructive"
       });
       return;
@@ -267,6 +309,7 @@ export default function IndexReal() {
         description: `Session "${newSessionName}" created successfully`
       });
     } catch (error) {
+      console.error('Session creation error:', error);
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to create session",
@@ -307,10 +350,21 @@ export default function IndexReal() {
   };
 
   const uploadAndProcessFiles = async () => {
-    if (!selectedSession) {
+    if (!selectedSession || selectedSession === 'undefined') {
       toast({
         title: "Error",
-        description: "Please select a session first",
+        description: "Please select a valid session first",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Verify the selected session exists
+    const sessionExists = appState.sessions.some(session => session.id === selectedSession);
+    if (!sessionExists) {
+      toast({
+        title: "Error",
+        description: "Selected session is invalid. Please select a different session.",
         variant: "destructive"
       });
       return;
@@ -390,6 +444,38 @@ export default function IndexReal() {
   };
 
   const uploadSchemeFile = async (schemeId: string, file: File) => {
+    // Validate scheme ID
+    if (!schemeId || schemeId === 'undefined') {
+      toast({
+        title: "Error",
+        description: "Invalid scheme selected. Please select a valid scheme.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Validate file
+    if (!file) {
+      toast({
+        title: "Error",
+        description: "Please select a file to upload.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Validate file type
+    if (file.type !== 'application/pdf') {
+      toast({
+        title: "Error",
+        description: "Please select a PDF file.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsProcessing(true);
+    
     try {
       await schemesApi.uploadFile(schemeId, file);
       
@@ -402,11 +488,14 @@ export default function IndexReal() {
         description: "Scheme file uploaded successfully"
       });
     } catch (error) {
+      console.error('Scheme file upload error:', error);
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to upload scheme file",
         variant: "destructive"
       });
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -480,6 +569,7 @@ export default function IndexReal() {
             <div className="space-y-2">
               {[
                 { id: 'upload', label: 'Upload Scripts', icon: Upload },
+                { id: 'processing', label: 'Real-Time Processing', icon: Loader2 },
                 { id: 'schemes', label: 'Schemes', icon: Book },
                 { id: 'sessions', label: 'Sessions', icon: FileText },
                 { id: 'analytics', label: 'Analytics', icon: BarChart3 },
@@ -814,9 +904,19 @@ export default function IndexReal() {
                                 variant="outline"
                                 size="sm"
                                 onClick={() => {
+                                  // Validate scheme ID before creating file input
+                                  if (!scheme.id || scheme.id === 'undefined') {
+                                    toast({
+                                      title: "Error",
+                                      description: "Invalid scheme selected. Please refresh the page and try again.",
+                                      variant: "destructive"
+                                    });
+                                    return;
+                                  }
+
                                   const input = document.createElement('input');
                                   input.type = 'file';
-                                  input.accept = '.pdf';
+                                  input.accept = '.pdf,application/pdf';
                                   input.onchange = (e) => {
                                     const file = (e.target as HTMLInputElement).files?.[0];
                                     if (file) {
@@ -825,10 +925,15 @@ export default function IndexReal() {
                                   };
                                   input.click();
                                 }}
+                                disabled={isProcessing}
                                 className="w-full"
                               >
-                                <FileUp className="w-3 h-3 mr-1" />
-                                {scheme.scheme_file ? 'Update File' : 'Upload PDF'}
+                                {isProcessing ? (
+                                  <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                                ) : (
+                                  <FileUp className="w-3 h-3 mr-1" />
+                                )}
+                                {isProcessing ? 'Uploading...' : (scheme.scheme_file ? 'Update File' : 'Upload PDF')}
                               </Button>
                             </div>
                           </div>
@@ -1245,6 +1350,23 @@ export default function IndexReal() {
                   )}
                 </CardContent>
               </Card>
+            )}
+
+            {/* Real-Time Processing View */}
+            {currentView === 'processing' && (
+              <ProcessingDashboard 
+                sessionId={selectedSession} 
+                onProcessingComplete={(result) => {
+                  toast({
+                    title: "Processing Complete!",
+                    description: `${result.student_name}: ${result.total_score}/${result.max_score} (${result.percentage}%)`
+                  });
+                  // Refresh data if needed
+                  if (selectedSession) {
+                    loadSessionData(selectedSession);
+                  }
+                }}
+              />
             )}
 
             {/* Settings View */}

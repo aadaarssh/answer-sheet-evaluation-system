@@ -1,7 +1,25 @@
 {
   "permissions": {
     "allow": [
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "Bash(node:*)",
+      "Bash(python test:*)",
+      "Bash(python:*)",
+      "Read(/D:\\answer sheet evaluation system\\ai-evaluation-backend/**)",
+      "Read(/D:\\answer sheet evaluation system\\ai-evaluation-backend\\app/**)",
+      "Read(/D:\\answer sheet evaluation system\\ai-evaluation-backend\\app\\workers/**)",
+      "Read(/D:\\answer sheet evaluation system\\ai-evaluation-backend\\app\\workers/**)",
+      "Read(/D:\\answer sheet evaluation system\\ai-evaluation-backend\\app\\workers/**)",
+      "Read(/D:\\answer sheet evaluation system\\ai-evaluation-backend\\app\\models/**)",
+      "Read(/D:\\answer sheet evaluation system\\ai-evaluation-backend\\app\\services/**)",
+      "Read(/D:\\answer sheet evaluation system\\ai-evaluation-backend\\app\\models/**)",
+      "Read(/D:\\answer sheet evaluation system\\ai-evaluation-backend\\app\\models/**)",
+      "Read(/D:\\answer sheet evaluation system\\ai-evaluation-backend/**)",
+      "Bash(pip install:*)",
+      "Read(/D:\\answer sheet evaluation system\\ai-evaluation-backend/**)",
+      "Read(/D:\\answer sheet evaluation system\\ai-evaluation-backend\\app\\workers/**)",
+      "Bash(curl:*)",
+      "Bash(npm install:*)"
     ],
     "deny": [],
     "ask": []

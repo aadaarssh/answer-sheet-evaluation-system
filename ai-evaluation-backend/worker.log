@@ -4,3 +4,24 @@
 2025-09-03 00:35:41,007 - app.utils.text_processing - WARNING - Sentence transformers not available - using fallback similarity calculation
 2025-09-03 00:47:58,116 - app.utils.text_processing - WARNING - Sentence transformers not available - using fallback similarity calculation
 2025-09-03 00:54:32,794 - app.utils.text_processing - WARNING - Sentence transformers not available - using fallback similarity calculation
+2025-09-03 22:52:40,514 - app.utils.text_processing - WARNING - Sentence transformers not available - using fallback similarity calculation
+2025-09-03 23:55:27,843 - app.workers.evaluation_worker - INFO - All worker services initialized successfully
+2025-09-04 00:06:14,262 - app.workers.evaluation_worker - INFO - All worker services initialized successfully
+2025-09-04 00:11:43,441 - __main__ - INFO - [OK] Redis connection successful
+2025-09-04 00:11:43,442 - __main__ - INFO - >> Starting Celery worker...
+2025-09-04 00:11:43,547 - app.workers.evaluation_worker - INFO - Using simple Celery configuration
+2025-09-04 00:11:47,620 - app.workers.evaluation_worker - INFO - All worker services initialized successfully
+2025-09-04 00:23:20,063 - __main__ - INFO - [OK] Redis connection successful
+2025-09-04 00:23:20,064 - __main__ - INFO - >> Starting Celery worker...
+2025-09-04 00:23:24,350 - app.workers.evaluation_worker - INFO - Worker services initialized successfully
+2025-09-04 08:19:58,814 - __main__ - INFO - [OK] Redis connection successful
+2025-09-04 08:19:58,816 - __main__ - INFO - >> Starting Celery worker...
+2025-09-04 08:20:05,323 - app.workers.evaluation_worker - INFO - Worker services initialized successfully
+2025-09-04 08:32:29,659 - __main__ - INFO - [OK] Redis connection successful
+2025-09-04 08:32:29,661 - __main__ - INFO - >> Starting Celery worker...
+2025-09-05 09:21:16,582 - __main__ - INFO - [OK] Redis connection successful
+2025-09-05 09:21:16,583 - __main__ - INFO - >> Starting Celery worker...
+2025-09-05 10:20:58,755 - __main__ - INFO - [OK] Redis connection successful
+2025-09-05 10:20:58,756 - __main__ - INFO - >> Starting Celery worker...
+2025-09-05 10:21:45,721 - __main__ - INFO - [OK] Redis connection successful
+2025-09-05 10:21:45,722 - __main__ - INFO - >> Starting Celery worker...

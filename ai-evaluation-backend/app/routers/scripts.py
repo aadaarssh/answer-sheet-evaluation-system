@@ -19,6 +19,20 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# Import Celery tasks with error handling
+CELERY_AVAILABLE = False
+process_answer_script = None
+batch_process_session = None
+
+try:
+    from ..workers.evaluation_worker import process_answer_script, batch_process_session
+    CELERY_AVAILABLE = True
+    logger.info("Celery tasks imported successfully")
+except ImportError as e:
+    logger.warning(f"Celery tasks not available: {e}")
+except Exception as e:
+    logger.error(f"Error importing Celery tasks: {e}")
+
 router = APIRouter(prefix="/scripts", tags=["answer_scripts"])
 
 @router.post("/upload-batch")
@@ -138,12 +152,44 @@ async def upload_batch_scripts(
         }
         
         # Start processing based on mode
-        if processing_mode == "real_time":
-            # TODO: Trigger immediate processing
-            response["message"] += ". Processing started immediately."
+        if CELERY_AVAILABLE and process_answer_script and batch_process_session:
+            try:
+                if processing_mode == "real_time":
+                    # Trigger individual processing for each script
+                    processing_tasks = []
+                    for script in uploaded_scripts:
+                        try:
+                            task = process_answer_script.delay(str(script.id))
+                            processing_tasks.append({
+                                "script_id": str(script.id),
+                                "task_id": task.id,
+                                "filename": script.file_name
+                            })
+                            logger.info(f"Queued script {script.id} for processing. Task ID: {task.id}")
+                        except Exception as e:
+                            logger.error(f"Failed to queue script {script.id}: {e}")
+                            errors.append(f"{script.file_name}: Failed to queue for processing")
+                    
+                    response["processing_tasks"] = processing_tasks
+                    response["message"] += f". Processing started immediately for {len(processing_tasks)} scripts."
+                    
+                else:
+                    # Queue entire session for batch processing
+                    try:
+                        task = batch_process_session.delay(session_id)
+                        response["batch_task_id"] = task.id
+                        response["message"] += ". Queued for batch processing."
+                        logger.info(f"Queued session {session_id} for batch processing. Task ID: {task.id}")
+                    except Exception as e:
+                        logger.error(f"Failed to queue session {session_id} for batch processing: {e}")
+                        response["message"] += ". Upload successful but processing queue failed."
+                        
+            except Exception as e:
+                logger.error(f"Error during task queuing: {e}")
+                response["message"] += ". Upload successful but processing unavailable."
         else:
-            # TODO: Queue for async processing
-            response["message"] += ". Queued for batch processing."
+            logger.warning("Celery not available. Processing will not start automatically.")
+            response["message"] += ". Processing will be available when worker is started."
         
         return response
         
@@ -240,14 +286,30 @@ async def upload_single_script(
         
         logger.info(f"Uploaded single script: {file.filename}")
         
-        # TODO: Trigger immediate processing for single upload
-        
-        return {
+        response = {
             "message": "File uploaded successfully",
             "script_id": str(result.inserted_id),
             "filename": file.filename,
             "processing_mode": "real_time"
         }
+        
+        # Trigger immediate processing if Celery is available
+        if CELERY_AVAILABLE and process_answer_script:
+            try:
+                task = process_answer_script.delay(str(result.inserted_id))
+                response["task"] = {
+                    "task_id": task.id,
+                    "status": "queued"
+                }
+                response["message"] += " and queued for processing"
+                logger.info(f"Queued script {result.inserted_id} for immediate processing. Task ID: {task.id}")
+            except Exception as e:
+                logger.error(f"Failed to queue script {result.inserted_id} for processing: {e}")
+                response["message"] += " but processing queue failed"
+        else:
+            response["message"] += " but processing unavailable (worker not started)"
+        
+        return response
         
     except HTTPException:
         raise
@@ -267,7 +329,7 @@ async def get_session_scripts_status(
     try:
         db = get_database()
         
-        # Verify session ownership
+        # Verify session belongs to user
         session = await db.exam_sessions.find_one({
             "_id": ObjectId(session_id),
             "professor_id": current_user.id
@@ -276,14 +338,13 @@ async def get_session_scripts_status(
         if not session:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Exam session not found"
+                detail="Session not found"
             )
         
-        # Get scripts with status
+        # Get all scripts in the session
         cursor = db.answer_scripts.find(
             {"session_id": ObjectId(session_id)},
             {
-                "_id": 1,
                 "student_name": 1,
                 "student_id": 1,
                 "file_name": 1,
@@ -390,6 +451,47 @@ async def get_script_details(
             detail="Failed to get script details"
         )
 
+@router.get("/task/{task_id}/status")
+async def get_task_status(
+    task_id: str,
+    current_user: UserInDB = Depends(get_current_active_user)
+):
+    """Get the status of a Celery task."""
+    try:
+        if not CELERY_AVAILABLE:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Task processing not available. Worker not started."
+            )
+        
+        from ..workers.celery_app import celery_app
+        
+        # Get task result
+        result = celery_app.AsyncResult(task_id)
+        
+        response = {
+            "task_id": task_id,
+            "status": result.status,
+            "ready": result.ready()
+        }
+        
+        if result.info:
+            response["info"] = result.info
+        
+        if result.successful():
+            response["result"] = result.result
+        elif result.failed():
+            response["error"] = str(result.info)
+        
+        return response
+        
+    except Exception as e:
+        logger.error(f"Error getting task status {task_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get task status"
+        )
+
 def extract_student_info_from_filename(filename: str) -> tuple[str, str]:
     """
     Extract student name and ID from filename using common patterns.
@@ -398,32 +500,30 @@ def extract_student_info_from_filename(filename: str) -> tuple[str, str]:
         filename: The uploaded filename
         
     Returns:
-        Tuple of (student_name, student_id)
+        tuple: (student_name, student_id)
     """
     # Remove file extension
-    name_part = Path(filename).stem
+    name_without_ext = Path(filename).stem
     
-    # Common patterns for student info in filenames
-    # Pattern: "StudentName_StudentID" or "StudentName-StudentID"
-    # Pattern: "ID_Name" or "ID-Name"
-    # Pattern: "Name ID" (space separated)
+    # Common patterns: 
+    # "John_Doe_123456.jpg" -> ("John Doe", "123456")
+    # "123456_John_Doe.jpg" -> ("John Doe", "123456")
+    # "JohnDoe123456.jpg" -> ("Unknown", "Unknown")
     
-    import re
+    # Try pattern: Name_ID or ID_Name
+    parts = name_without_ext.replace('_', ' ').split()
     
-    # Try pattern: Name_ID or Name-ID
-    match = re.match(r'^([A-Za-z\s]+)[_-]([A-Za-z0-9]+)$', name_part)
-    if match:
-        return match.group(1).strip(), match.group(2).strip()
+    if len(parts) >= 2:
+        # Check if last part is numeric (student ID)
+        if parts[-1].isdigit():
+            student_id = parts[-1]
+            student_name = ' '.join(parts[:-1])
+            return (student_name, student_id)
+        # Check if first part is numeric (student ID)
+        elif parts[0].isdigit():
+            student_id = parts[0]
+            student_name = ' '.join(parts[1:])
+            return (student_name, student_id)
     
-    # Try pattern: ID_Name or ID-Name (assuming ID starts with numbers)
-    match = re.match(r'^([0-9]+[A-Za-z0-9]*)[_-]([A-Za-z\s]+)$', name_part)
-    if match:
-        return match.group(2).strip(), match.group(1).strip()
-    
-    # Try pattern: "Name ID" (space separated, ID at end)
-    match = re.match(r'^([A-Za-z\s]+)\s+([A-Za-z0-9]+)$', name_part)
-    if match:
-        return match.group(1).strip(), match.group(2).strip()
-    
-    # If no pattern matches, use filename as name and generate ID
-    return name_part, f"STU{hash(name_part) % 10000:04d}"
+    # Default fallback
+    return ("Unknown", "Unknown")

@@ -29,13 +29,13 @@ logger = logging.getLogger(__name__)
 def print_banner():
     """Print worker startup banner."""
     banner = """
-    ╔═══════════════════════════════════════════════╗
-    ║     AI Evaluation System - Celery Worker     ║
-    ║            Async Task Processor               ║
-    ╚═══════════════════════════════════════════════╝
+    +===============================================+
+    |     AI Evaluation System - Celery Worker     |
+    |            Async Task Processor               |
+    +===============================================+
     
-    🔄 Starting worker...
-    📋 Processing evaluation tasks
+    >> Starting worker...
+    >> Processing evaluation tasks
     """
     print(banner)
 
@@ -45,7 +45,7 @@ def check_redis_connection():
         import redis
         r = redis.Redis.from_url(settings.redis_url)
         r.ping()
-        logger.info("✓ Redis connection successful")
+        logger.info("[OK] Redis connection successful")
         return True
     except Exception as e:
         logger.error(f"✗ Redis connection failed: {e}")
@@ -55,24 +55,24 @@ def print_worker_info():
     """Print worker configuration."""
     info = f"""
     Worker Configuration:
-    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    🔗 Broker URL:       {settings.redis_url}
-    📋 Available Queues: evaluation, batch
-    🏭 Worker Type:      Async Task Processor
+    =============================================
+    - Broker URL:       {settings.redis_url}
+    - Available Queues: evaluation, batch
+    - Worker Type:      Async Task Processor
     
     Available Tasks:
-    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    📄 process_answer_script     - Single script processing
-    📦 batch_process_session     - Batch session processing  
-    🧹 cleanup_old_tasks         - System maintenance
+    =============================================
+    * process_answer_script     - Single script processing
+    * batch_process_session     - Batch session processing  
+    * cleanup_old_tasks         - System maintenance
     
     Features:
-    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    🤖 OCR Processing:   {'✓ Enabled' if settings.openai_api_key else '⚠ Mock Mode'}
-    🔍 AI Verification:  {'✓ Enabled' if settings.gemini_api_key else '⚠ Fallback Mode'}
-    📧 Notifications:    {'✓ Enabled' if settings.email_user else '✗ Disabled'}
+    =============================================
+    * OCR Processing:   {'[OK] Enabled' if settings.openai_api_key else '[WARN] Mock Mode'}
+    * AI Verification:  {'[OK] Enabled' if settings.gemini_api_key else '[WARN] Fallback Mode'}
+    * Notifications:    {'[OK] Enabled' if settings.email_user else '[DISABLED]'}
     
-    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    =============================================
     """
     print(info)
 
@@ -87,13 +87,13 @@ def main():
     
     print_worker_info()
     
-    logger.info("🎯 Starting Celery worker...")
+    logger.info(">> Starting Celery worker...")
     
     # Start worker with configuration
     celery_app.worker_main([
         'worker',
         '--loglevel=info',
-        '--queues=evaluation,batch',
+        '--queues=celery,evaluation,batch',  # Include default celery queue
         '--concurrency=4',
         '--prefetch-multiplier=1',
         '--max-tasks-per-child=1000',
